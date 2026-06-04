@@ -1,0 +1,15 @@
+services:
+  orbitagro-db-564099:
+    image: postgres:16
+    container_name: orbitagro-db-564099
+    environment:
+      POSTGRES_DB: orbitagro
+      POSTGRES_USER: orbitagro
+      POSTGRES_PASSWORD: orbitagro123
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
