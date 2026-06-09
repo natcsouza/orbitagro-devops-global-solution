@@ -1,15 +1,50 @@
 services:
-  orbitagro-db-564099:
+  orbitagro-db-564105:
     image: postgres:16
-    container_name: orbitagro-db-564099
+    container_name: orbitagro-db-564105
+    restart: unless-stopped
     environment:
-      POSTGRES_DB: orbitagro
-      POSTGRES_USER: orbitagro
-      POSTGRES_PASSWORD: orbitagro123
+      POSTGRES_DB: ${POSTGRES_DB:-orbitagro}
+      POSTGRES_USER: ${POSTGRES_USER:-orbitagro}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-orbitagro123}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-orbitagro} -d ${POSTGRES_DB:-orbitagro}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - orbitagro-network
+
+  orbitagro-api-564105:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: orbitagro-api-564105
+    restart: unless-stopped
+    depends_on:
+      orbitagro-db-564105:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://orbitagro-db-564105:5432/${POSTGRES_DB:-orbitagro}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-orbitagro}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-orbitagro123}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: ${SPRING_JPA_HIBERNATE_DDL_AUTO:-update}
+      SPRING_JPA_SHOW_SQL: ${SPRING_JPA_SHOW_SQL:-false}
+      SPRING_JPA_FORMAT_SQL: ${SPRING_JPA_FORMAT_SQL:-false}
+      SERVER_PORT: ${SERVER_PORT:-8080}
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+    networks:
+      - orbitagro-network
 
 volumes:
   pgdata:
+
+networks:
+  orbitagro-network:
+    driver: bridge
