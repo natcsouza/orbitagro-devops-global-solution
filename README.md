@@ -32,27 +32,7 @@ Pequenos e médios produtores muitas vezes não têm acesso a monitoramento cont
 
 ![](Modelagem%20de%20Arquitetura%20devops.png)
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│             AZURE CLOUD — canadacentral                              │
-│   VM: vm-orbitagro-564099  |  AlmaLinux 10 (2ª geração)             │
-│   Tamanho: Standard_B2ats_v2                                         │
-│                                                                       │
-│   docker compose up -d --build                                       │
-│   ┌────────────────────────┐     ┌───────────────────────────┐      │
-│   │ orbitagro-api-564099   │     │ orbitagro-db-564099        │      │
-│   │ Java 21 + Spring Boot  │◄────│ PostgreSQL 16              │      │
-│   │ Usuário: orbitagro     │JDBC │ Volume: pgdata             │      │
-│   │ WORKDIR: /app          │     │ Porta: 5432                │      │
-│   │ Porta: 8080            │     └───────────────────────────┘      │
-│   └────────────────────────┘                                         │
-│   Rede bridge: orbitagro-network                                     │
-└─────────────────────────────────────────────────────────────────────┘
-         ▲ HTTP REST (curl — terminal)
-    ┌────┴──────────┐
-    │ Cliente / Vídeo│
-    └────────────────┘
-```
+Diagrama de infraestrutura na nuvem: Azure (VM AlmaLinux 10, NSG, IP público) → Docker Compose → API + PostgreSQL, volume `pgdata` e rede `orbitagro-network`.
 
 **Tabelas relacionadas:** `tb_produtor` 1:N `tb_area_cultivo` 1:N `tb_monitoramento` · `tb_alerta`
 
