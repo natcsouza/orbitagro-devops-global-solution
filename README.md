@@ -1,38 +1,102 @@
-# OrbitAgro API
+# OrbitAgro — Monitoramento Inteligente do Agronegócio
 
-API REST — **FIAP Global Solution 2026/1** | Disciplina: **DevOps Tools & Cloud Computing**
+> Plataforma REST que conecta **satélites ao agronegócio**: calcula **NDVI** (saúde da vegetação), integra sensores **IoT** (umidade e temperatura do solo) e gera **alertas inteligentes** para produtores rurais e cooperativas. ODS 2, 9 e 13.
 
-O OrbitAgro conecta **satélites ao agronegócio**: calcula o **NDVI** (saúde da vegetação), integra sensores **IoT** (umidade e temperatura do solo) e gera **alertas inteligentes** para produtores rurais e cooperativas. ODS 2, 9 e 13.
+**Global Solution 2026/1 · FIAP · DevOps Tools & Cloud Computing**
 
-**Representante da equipe:** Natalia Cristina de Souza — RM **564099** (presente no nome dos containers).
+| Integrante | RM |
+|------------|-----|
+| **Natalia Cristina de Souza** *(representante DevOps)* | **564099** |
+| Nickolas Davi | 564105 |
+| Samara Vilela | 566133 |
+| Otávio Ferreira | 565960 |
+| Rodrigo Carvalho Silva | 565162 |
+
+**Repositório:** https://github.com/natcsouza/orbitagro-devops-global-solution
 
 ---
 
-## Arquitetura da Solução
+## Descrição da Solução
+
+Pequenos e médios produtores muitas vezes não têm acesso a monitoramento contínuo e acessível da lavoura. O OrbitAgro centraliza dados de campo e satélite em uma API na nuvem:
+
+- Cadastra **produtores** e **áreas de cultivo** com geolocalização
+- Registra **monitoramentos** (NDVI, umidade, temperatura do solo)
+- Gera **alertas** automáticos por risco agrícola
+- Persiste tudo em **PostgreSQL 16** com rastreabilidade
+- Executa na **VM Azure** com **Docker Compose** (API Java + banco integrados)
+
+---
+
+## Arquitetura Macro
 
 ![](Modelagem%20de%20Arquitetura%20devops.png)
 
-Diagrama macro da infraestrutura: VM Azure Linux → Docker Compose → API Java + PostgreSQL 16, mesma rede, volume persistente.
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│             AZURE CLOUD — canadacentral                              │
+│   VM: vm-orbitagro-564099  |  AlmaLinux 10 (2ª geração)             │
+│   Tamanho: Standard_B2ats_v2                                         │
+│                                                                       │
+│   docker compose up -d --build                                       │
+│   ┌────────────────────────┐     ┌───────────────────────────┐      │
+│   │ orbitagro-api-564099   │     │ orbitagro-db-564099        │      │
+│   │ Java 21 + Spring Boot  │◄────│ PostgreSQL 16              │      │
+│   │ Usuário: orbitagro     │JDBC │ Volume: pgdata             │      │
+│   │ WORKDIR: /app          │     │ Porta: 5432                │      │
+│   │ Porta: 8080            │     └───────────────────────────┘      │
+│   └────────────────────────┘                                         │
+│   Rede bridge: orbitagro-network                                     │
+└─────────────────────────────────────────────────────────────────────┘
+         ▲ HTTP REST (curl — terminal)
+    ┌────┴──────────┐
+    │ Cliente / Vídeo│
+    └────────────────┘
+```
+
+**Tabelas relacionadas:** `tb_produtor` 1:N `tb_area_cultivo` 1:N `tb_monitoramento` · `tb_alerta`
 
 ---
 
-## Requisitos DevOps Atendidos
+## Pré-requisitos
 
-| Requisito | Como atendemos |
-|-----------|----------------|
-| 2 containers Docker integrados | `orbitagro-api-564099` + `orbitagro-db-564099` |
-| Imagem personalizada da API | `Dockerfile` multi-stage (Maven + JRE 21) |
-| Usuário não-root na API | `USER orbitagro` no Dockerfile |
-| Diretório de trabalho | `WORKDIR /app` |
-| Variáveis de ambiente | `.env` + `docker-compose.yml` (API e DB) |
-| Portas expostas | 8080 (API) e 5432 (PostgreSQL) |
-| RM no nome dos containers | `564099` |
-| Volume nomeado | `pgdata` |
-| Mesma rede Docker | `orbitagro-network` |
-| Modo background | `docker compose up -d` |
-| CRUD + 2+ tabelas | Produtor (CRUD) + Área de Cultivo (relacionamento) |
-| SELECT após cada operação | Documentado no passo 10 |
-| Execução em nuvem | VM Azure (não localhost) |
+- Conta [Azure for Students](https://portal.azure.com)
+- [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) instalado (`az login`)
+- **Chave SSH** gerada no seu PC (veja seção abaixo — **não confundir com o IP da VM**)
+- Git Bash, WSL ou terminal Linux na VM
+
+### Chave SSH — o que é e onde fica
+
+A chave SSH **não tem o IP no nome**. Ela fica no **seu computador**, em:
+
+| Arquivo | Função |
+|---------|--------|
+| `~/.ssh/id_rsa_orbitagro` | Chave **privada** (secreta — não compartilhar) |
+| `~/.ssh/id_rsa_orbitagro.pub` | Chave **pública** (enviada para a Azure na criação da VM) |
+
+No **Windows**, o caminho equivalente é:
+
+`C:\Users\<SEU_USUARIO>\.ssh\id_rsa_orbitagro`
+
+Gerar a chave (PowerShell):
+
+```powershell
+ssh-keygen -t rsa -b 4096 -f $env:USERPROFILE\.ssh\id_rsa_orbitagro -C "orbitagro-azure-564099"
+```
+
+Git Bash / Linux:
+
+```bash
+ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa_orbitagro -C "orbitagro-azure-564099"
+```
+
+Conectar na VM (substitua pelo **IP público** exibido ao criar a VM):
+
+```bash
+ssh -i ~/.ssh/id_rsa_orbitagro azureuser@20.151.105.176
+```
+
+> **Login na VM:** usuário `azureuser` (não root). **`sudo`** na VM para instalar Docker é permitido. A penalidade de root é no **container da API** — `whoami` deve retornar `orbitagro`.
 
 ---
 
@@ -40,9 +104,9 @@ Diagrama macro da infraestrutura: VM Azure Linux → Docker Compose → API Java
 
 | Penalidade | Perda | O que fazer |
 |------------|-------|-------------|
-| Solução em **localhost** | **Nota zero** | Rodar tudo na **VM Azure**. `curl` com IP público no vídeo. |
+| Solução em **localhost** | **Nota zero** | Rodar tudo na **VM Azure**. `curl` com **IP público** no vídeo. |
 | Sem SELECT por operação | −2,0 cada | `SELECT` após **CREATE, READ, UPDATE e DELETE** |
-| App com usuário **root** | −1,0 | `whoami` no container da API deve retornar `orbitagro` |
+| App com usuário **root** | −1,0 | `whoami` no container da API → `orbitagro` |
 | Sem How To no GitHub | −1,5 | Este README |
 | Sem volume nomeado | −1,0 | `pgdata` no compose |
 | Sem variável de ambiente (por container) | −0,5 cada | Env vars no compose |
@@ -56,37 +120,24 @@ Diagrama macro da infraestrutura: VM Azure Linux → Docker Compose → API Java
 | Sem descrição da solução | −1,0 | Seção inicial deste README |
 | Diagrama estilo TOGAF/fluxograma | **Nota zero** | Usar o PNG de arquitetura cloud |
 
-> **Modo background (`-d`)** significa que os containers rodam em segundo plano no terminal — comando `docker compose up -d --build`. Isso **não substitui** a VM Azure: os containers devem rodar **dentro da VM na nuvem**, não no seu PC.
-
-> **Precisa criar VM antes?** **Sim.** Sem VM Azure com IP público a entrega recebe **nota zero**. Crie a VM no passo 1 (pode ser antes de gravar o vídeo).
+> **Modo background (`-d`)** = containers em segundo plano (`docker compose up -d --build`). Isso **não substitui** a VM Azure: os containers rodam **dentro da VM na nuvem**, não no seu PC.
 
 ---
 
-## How To — Tutorial Completo
+## How To — Do clone ao ambiente em nuvem
 
-Ordem exata do vídeo demonstrativo: da VM Azure até as evidências no terminal.
+Ordem sugerida para o **vídeo demonstrativo** (terminal + curl, sem Swagger).
 
-### 1. Criar a VM Azure — AlmaLinux (terminal, estilo aula)
+### ETAPA 1 — Clonar o repositório (PC ou VM)
 
-**No seu PC (Windows):** instale o Azure CLI, faça login, gere chave SSH e execute o script.
-
-```powershell
-winget install -e --id Microsoft.AzureCLI
+```bash
+git clone https://github.com/natcsouza/orbitagro-devops-global-solution.git
+cd orbitagro-devops-global-solution
 ```
 
-Feche e abra o terminal. Depois:
+### ETAPA 2 — Criar a VM AlmaLinux no Azure
 
-```powershell
-az login
-```
-
-```powershell
-ssh-keygen -t rsa -b 4096
-```
-
-(Aperte Enter nas perguntas para aceitar o padrão.)
-
-No **Git Bash** ou **WSL**, dentro da pasta do projeto:
+No PC: `az login`, gere a chave SSH (seção acima) e execute:
 
 ```bash
 cd scripts/azure
@@ -94,36 +145,35 @@ chmod +x criar-vm-azure.sh
 ./criar-vm-azure.sh
 ```
 
-Anote o **IP público** exibido ao final. SO: **AlmaLinux 9**. Portas: 22, 8080, 5432.
+O script cria:
 
----
+- Resource Group `rg-orbitagro-564099`
+- VM `vm-orbitagro-564099` — **AlmaLinux 10 (2ª geração)**, **Standard_B2ats_v2**, região **canadacentral**
+- Portas **22**, **8080** e **5432** abertas no NSG
 
-### 2. Conectar na VM
+Anote o **IP público** exibido ao final (exemplo desta entrega: `20.151.105.176`).
+
+Variáveis opcionais (`.env.example`):
 
 ```bash
-ssh azureuser@<IP_PUBLICO_DA_VM>
+export AZURE_SSH_KEY_PATH=~/.ssh/id_rsa_orbitagro.pub
+export AZURE_VM_SIZE=Standard_B2ats_v2
+export AZURE_LOCATION=canadacentral
 ```
 
-Confirmar que está na nuvem:
+### ETAPA 3 — Conectar na VM via SSH
 
 ```bash
+ssh -i ~/.ssh/id_rsa_orbitagro azureuser@<IP_PUBLICO_DA_VM>
 hostname -I
+cat /etc/os-release | head -2
 ```
 
----
-
-### 3. Clonar o Repositório
+### ETAPA 4 — Instalar Docker na VM (primeira vez)
 
 ```bash
 git clone https://github.com/natcsouza/orbitagro-devops-global-solution.git
 cd orbitagro-devops-global-solution
-```
-
----
-
-### 4. Instalar Docker na VM AlmaLinux (primeira vez)
-
-```bash
 chmod +x scripts/deploy/install-docker-almalinux.sh
 sudo ./scripts/deploy/install-docker-almalinux.sh
 ```
@@ -132,37 +182,27 @@ Reconectar para aplicar o grupo `docker`:
 
 ```bash
 exit
-ssh azureuser@<IP_PUBLICO_DA_VM>
+ssh -i ~/.ssh/id_rsa_orbitagro azureuser@<IP_PUBLICO_DA_VM>
 cd orbitagro-devops-global-solution
 ```
 
----
-
-### 5. Subir os Containers em Background
+### ETAPA 5 — Subir os containers em background
 
 ```bash
+cp .env.example .env
 docker compose up -d --build
 ```
 
-O `-d` executa em **segundo plano** (modo background).
-
----
-
-### 6. Validar os Containers
+Aguarde na primeira vez (Maven compila a API). O `-d` executa em **segundo plano**.
 
 ```bash
 docker compose ps
-```
-
-Esperado: `orbitagro-api-564099` e `orbitagro-db-564099` com status **Up**, portas **8080** e **5432**.
-
-```bash
 docker ps
 ```
 
----
+Esperado: `orbitagro-api-564099` e `orbitagro-db-564099` **Up**, portas **8080** e **5432**.
 
-### 7. Validar API na Nuvem (não localhost)
+### ETAPA 6 — Validar API na nuvem (IP público)
 
 ```bash
 curl -s http://<IP_PUBLICO_DA_VM>:8080/produtores
@@ -172,139 +212,35 @@ Resposta esperada: `[]` ou JSON com produtores.
 
 ---
 
-### 8. Exibir Logs dos Dois Containers
+## Evidências obrigatórias
+
+### Logs dos dois containers
 
 ```bash
-docker logs orbitagro-api-564099
+docker logs orbitagro-api-564099 --tail 30
+docker logs orbitagro-db-564099 --tail 30
 ```
 
-```bash
-docker logs orbitagro-db-564099
-```
-
----
-
-### 9. Inspecionar Container da API (usuário não-root)
+### Acesso ao container da API (usuário não-root)
 
 ```bash
 docker container exec -it orbitagro-api-564099 sh
-```
-
-```bash
-whoami
-pwd
-ls -l
+whoami    # orbitagro
+pwd       # /app
+ls -l     # app.jar
 exit
 ```
 
-Resultado esperado: `orbitagro` | `/app` | `app.jar`
-
----
-
-### 10. Inspecionar Container do Banco
+### Acesso ao container do banco
 
 ```bash
 docker container exec -u postgres -it orbitagro-db-564099 bash
-```
-
-```bash
 whoami
-ls -l /var/lib/postgresql/data
+ls -l /var/lib/postgresql/data | head
 exit
 ```
 
-Resultado esperado: `postgres` | arquivos do volume `pgdata`
-
----
-
-### 11. CRUD via curl + SELECT no Banco
-
-Definir a API (dentro da VM):
-
-```bash
-API="http://localhost:8080"
-```
-
-> Cada operação abaixo **deve** ser seguida do `SELECT` correspondente no container do banco.
-
-#### CREATE — Produtor
-
-```bash
-curl -s -X POST "$API/produtores" \
-  -H "Content-Type: application/json" \
-  -d '{"nome":"João Silva","email":"joao@fazenda.com","telefone":"66999999999"}'
-```
-
-```bash
-docker container exec -it orbitagro-db-564099 psql -U orbitagro -d orbitagro \
-  -c "SELECT * FROM tb_produtor;"
-```
-
-#### CREATE — Área de Cultivo (2ª tabela)
-
-```bash
-curl -s -X POST "$API/areas" \
-  -H "Content-Type: application/json" \
-  -d '{"nomeArea":"Talhão Norte","cultura":"Soja","latitude":-12.97,"longitude":-56.10,"produtorId":1}'
-```
-
-```bash
-docker container exec -it orbitagro-db-564099 psql -U orbitagro -d orbitagro \
-  -c "SELECT * FROM tb_area_cultivo;"
-```
-
-#### READ — Listar e buscar
-
-```bash
-curl -s "$API/produtores"
-curl -s "$API/produtores/1"
-```
-
-```bash
-docker container exec -it orbitagro-db-564099 psql -U orbitagro -d orbitagro \
-  -c "SELECT id, nome, email FROM tb_produtor WHERE id = 1;"
-```
-
-#### UPDATE — Atualizar produtor
-
-```bash
-curl -s -X PUT "$API/produtores/1" \
-  -H "Content-Type: application/json" \
-  -d '{"nome":"João Silva Atualizado","email":"joao.novo@fazenda.com","telefone":"66988887777"}'
-```
-
-```bash
-docker container exec -it orbitagro-db-564099 psql -U orbitagro -d orbitagro \
-  -c "SELECT id, nome, email FROM tb_produtor WHERE id = 1;"
-```
-
-#### DELETE — Remover produtor de teste
-
-```bash
-curl -s -X POST "$API/produtores" \
-  -H "Content-Type: application/json" \
-  -d '{"nome":"Maria Teste","email":"maria@teste.com","telefone":"66977776666"}'
-```
-
-```bash
-curl -s -X DELETE "$API/produtores/2"
-```
-
-```bash
-docker container exec -it orbitagro-db-564099 psql -U orbitagro -d orbitagro \
-  -c "SELECT * FROM tb_produtor;"
-```
-
-#### JOIN — Relacionamento entre tabelas
-
-```bash
-docker container exec -it orbitagro-db-564099 psql -U orbitagro -d orbitagro \
-  -c "SELECT p.nome, a.nome_area, a.cultura FROM tb_produtor p JOIN tb_area_cultivo a ON a.produtor_id = p.id;"
-```
-
----
-
-### 12. Infraestrutura Docker
+### Infraestrutura Docker
 
 ```bash
 docker images
@@ -314,13 +250,88 @@ docker volume ls
 
 ---
 
-### 13. Teste de Persistência
+## CRUD completo via curl + SELECT no banco
+
+Definir a API **dentro da VM**:
+
+```bash
+API="http://localhost:8080"
+```
+
+> Cada operação **deve** ser seguida do `SELECT` correspondente (evita −2,0 pts por operação).
+
+### CREATE — Produtor
+
+```bash
+curl -s -X POST "$API/produtores" \
+  -H "Content-Type: application/json" \
+  -d '{"nome":"João Silva","email":"joao@fazenda.com","telefone":"66999999999"}'
+
+docker container exec -it orbitagro-db-564099 psql -U orbitagro -d orbitagro \
+  -c "SELECT * FROM tb_produtor;"
+```
+
+### CREATE — Área de Cultivo (2ª tabela)
+
+```bash
+curl -s -X POST "$API/areas" \
+  -H "Content-Type: application/json" \
+  -d '{"nomeArea":"Talhão Norte","cultura":"Soja","latitude":-12.97,"longitude":-56.10,"produtorId":1}'
+
+docker container exec -it orbitagro-db-564099 psql -U orbitagro -d orbitagro \
+  -c "SELECT * FROM tb_area_cultivo;"
+```
+
+### READ — Listar e buscar
+
+```bash
+curl -s "$API/produtores"
+curl -s "$API/produtores/1"
+
+docker container exec -it orbitagro-db-564099 psql -U orbitagro -d orbitagro \
+  -c "SELECT id, nome, email FROM tb_produtor WHERE id = 1;"
+```
+
+### UPDATE — Atualizar produtor
+
+```bash
+curl -s -X PUT "$API/produtores/1" \
+  -H "Content-Type: application/json" \
+  -d '{"nome":"João Silva Atualizado","email":"joao.novo@fazenda.com","telefone":"66988887777"}'
+
+docker container exec -it orbitagro-db-564099 psql -U orbitagro -d orbitagro \
+  -c "SELECT id, nome, email FROM tb_produtor WHERE id = 1;"
+```
+
+### DELETE — Remover produtor de teste
+
+```bash
+curl -s -X POST "$API/produtores" \
+  -H "Content-Type: application/json" \
+  -d '{"nome":"Maria Teste","email":"maria@teste.com","telefone":"66977776666"}'
+
+curl -s -X DELETE "$API/produtores/2"
+
+docker container exec -it orbitagro-db-564099 psql -U orbitagro -d orbitagro \
+  -c "SELECT * FROM tb_produtor;"
+```
+
+### JOIN — Relacionamento entre tabelas
+
+```bash
+docker container exec -it orbitagro-db-564099 psql -U orbitagro -d orbitagro \
+  -c "SELECT p.nome, a.nome_area, a.cultura FROM tb_produtor p JOIN tb_area_cultivo a ON a.produtor_id = p.id;"
+```
+
+---
+
+## Teste de persistência (volume pgdata)
 
 Sair e reconectar na VM:
 
 ```bash
 exit
-ssh azureuser@<IP_PUBLICO_DA_VM>
+ssh -i ~/.ssh/id_rsa_orbitagro azureuser@<IP_PUBLICO_DA_VM>
 ```
 
 ```bash
@@ -331,16 +342,30 @@ docker container exec -it orbitagro-db-564099 psql -U orbitagro -d orbitagro \
   -c "SELECT * FROM tb_area_cultivo;"
 ```
 
-Dados devem permanecer no volume `pgdata`.
+Os dados devem permanecer após reconexão — volume nomeado `pgdata`.
 
 ---
 
-## Estrutura de Dados
+## Checklist de requisitos DevOps
 
-```text
-TB_PRODUTOR  1:N  TB_AREA_CULTIVO  1:N  TB_MONITORAMENTO
-                              └── 1:N  TB_ALERTA
-```
+| Requisito | Status |
+|-----------|--------|
+| Dockerfile multi-stage personalizado | ✅ |
+| Usuário não-root na API: `orbitagro` | ✅ |
+| WORKDIR `/app` | ✅ |
+| Variáveis de ambiente (API + DB) | ✅ |
+| Porta 8080 exposta (API) | ✅ |
+| Container API com RM **564099** | ✅ |
+| CRUD + 2 tabelas + JOIN | ✅ |
+| SELECT após cada operação CRUD | ✅ |
+| Volume nomeado `pgdata` | ✅ |
+| Porta 5432 exposta (PostgreSQL) | ✅ |
+| Container DB com RM **564099** | ✅ |
+| Rede `orbitagro-network` | ✅ |
+| Modo background (`-d`) | ✅ |
+| Logs + `docker exec` nos 2 containers | ✅ |
+| Execução em nuvem — VM Azure + IP público | ✅ |
+| How To no GitHub | ✅ |
 
 ---
 
@@ -349,25 +374,17 @@ TB_PRODUTOR  1:N  TB_AREA_CULTIVO  1:N  TB_MONITORAMENTO
 | Tecnologia | Versão |
 |------------|--------|
 | Java | 21 |
-| Spring Boot | 4.0.6 |
+| Spring Boot | 3.2.5 |
 | PostgreSQL | 16 |
 | Docker + Compose | Latest |
-| Azure VM | AlmaLinux 9 |
+| Azure VM | AlmaLinux 10 (2ª geração) · Standard_B2ats_v2 |
 
 ---
 
-## Vídeo Demonstrativo
+## Vídeo demonstrativo
 
 Link: [INSERIR LINK DO YOUTUBE AQUI]
 
 ---
 
-## Equipe
-
-| Integrante | RM |
-|------------|-----|
-| Natalia Cristina de Souza (representante) | 564099 |
-| Nickolas Davi | 564105 |
-| Samara Vilela | 566133 |
-| Otávio Ferreira | 565960 |
-| Rodrigo Carvalho Silva | 565162 |
+*OrbitAgro · Global Solution 2026/1 · FIAP · VM AlmaLinux 10 (2ª geração) · RM 564099*

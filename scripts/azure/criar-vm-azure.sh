@@ -7,14 +7,14 @@ set -euo pipefail
 # Pré-requisitos:
 #   - Azure CLI instalado (az --version)
 #   - az login realizado
-#   - Chave SSH em ~/.ssh/id_rsa.pub
+#   - Chave SSH em ~/.ssh/id_rsa_orbitagro.pub
 
 RESOURCE_GROUP="${AZURE_RESOURCE_GROUP:-rg-orbitagro-564099}"
-LOCATION="${AZURE_LOCATION:-brazilsouth}"
+LOCATION="${AZURE_LOCATION:-canadacentral}"
 VM_NAME="${AZURE_VM_NAME:-vm-orbitagro-564099}"
-VM_SIZE="${AZURE_VM_SIZE:-Standard_B2s}"
+VM_SIZE="${AZURE_VM_SIZE:-Standard_B2ats_v2}"
 ADMIN_USERNAME="${AZURE_ADMIN_USERNAME:-azureuser}"
-SSH_KEY_PATH="${AZURE_SSH_KEY_PATH:-$HOME/.ssh/id_rsa.pub}"
+SSH_KEY_PATH="${AZURE_SSH_KEY_PATH:-$HOME/.ssh/id_rsa_orbitagro.pub}"
 
 echo "========================================"
 echo "  OrbitAgro — Criar VM AlmaLinux Azure"
@@ -34,18 +34,18 @@ fi
 
 if [ ! -f "${SSH_KEY_PATH/#\~/$HOME}" ]; then
   echo "ERRO: Chave SSH não encontrada em ${SSH_KEY_PATH}"
-  echo "Gere com: ssh-keygen -t rsa -b 4096"
+  echo "Gere com: ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa_orbitagro -C \"orbitagro-azure-564099\""
   exit 1
 fi
 
 echo "==> [1/4] Criando Resource Group..."
 az group create --name "${RESOURCE_GROUP}" --location "${LOCATION}" --output none
 
-echo "==> [2/4] Criando VM AlmaLinux 9 (pode demorar alguns minutos)..."
+echo "==> [2/4] Criando VM AlmaLinux 10 (2ª geração — pode demorar alguns minutos)..."
 az vm create \
   --resource-group "${RESOURCE_GROUP}" \
   --name "${VM_NAME}" \
-  --image almalinux:9-gen2 \
+  --image almalinux:almalinux-x86_64:10-gen2:latest \
   --size "${VM_SIZE}" \
   --admin-username "${ADMIN_USERNAME}" \
   --authentication-type ssh \
@@ -105,9 +105,9 @@ echo "========================================"
 echo "  VM CRIADA COM SUCESSO!"
 echo "========================================"
 echo "  Nome:  ${VM_NAME}"
-echo "  SO:    AlmaLinux 9"
+echo "  SO:    AlmaLinux 10 (2ª geração)"
 echo "  IP:    ${PUBLIC_IP}"
 echo ""
 echo "  Conectar:"
-echo "  ssh ${ADMIN_USERNAME}@${PUBLIC_IP}"
+echo "  ssh -i ~/.ssh/id_rsa_orbitagro ${ADMIN_USERNAME}@${PUBLIC_IP}"
 echo "========================================"
