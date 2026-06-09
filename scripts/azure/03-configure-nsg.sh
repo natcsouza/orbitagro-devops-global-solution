@@ -4,8 +4,8 @@ set -euo pipefail
 # Configura regras do NSG para SSH, API e PostgreSQL
 # Uso: ./03-configure-nsg.sh
 
-RESOURCE_GROUP="${AZURE_RESOURCE_GROUP:-rg-orbitagro-564105}"
-NSG_NAME="${AZURE_NSG_NAME:-nsg-orbitagro-564105}"
+RESOURCE_GROUP="${AZURE_RESOURCE_GROUP:-rg-orbitagro-564099}"
+NSG_NAME="${AZURE_NSG_NAME:-nsg-orbitagro-564099}"
 
 echo "==> Configurando NSG: ${NSG_NAME}"
 

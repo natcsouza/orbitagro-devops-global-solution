@@ -4,8 +4,8 @@ set -euo pipefail
 # Abre portas no firewall da VM via Azure CLI (extensão run-command)
 # Uso: ./04-open-ports.sh
 
-RESOURCE_GROUP="${AZURE_RESOURCE_GROUP:-rg-orbitagro-564105}"
-VM_NAME="${AZURE_VM_NAME:-vm-orbitagro-564105}"
+RESOURCE_GROUP="${AZURE_RESOURCE_GROUP:-rg-orbitagro-564099}"
+VM_NAME="${AZURE_VM_NAME:-vm-orbitagro-564099}"
 
 echo "==> Abrindo portas no firewall da VM ${VM_NAME}"
 

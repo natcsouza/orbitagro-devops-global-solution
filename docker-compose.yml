@@ -1,7 +1,7 @@
 services:
-  orbitagro-db-564105:
+  orbitagro-db-564099:
     image: postgres:16
-    container_name: orbitagro-db-564105
+    container_name: orbitagro-db-564099
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-orbitagro}
@@ -20,17 +20,17 @@ services:
     networks:
       - orbitagro-network
 
-  orbitagro-api-564105:
+  orbitagro-api-564099:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: orbitagro-api-564105
+    container_name: orbitagro-api-564099
     restart: unless-stopped
     depends_on:
-      orbitagro-db-564105:
+      orbitagro-db-564099:
         condition: service_healthy
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://orbitagro-db-564105:5432/${POSTGRES_DB:-orbitagro}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://orbitagro-db-564099:5432/${POSTGRES_DB:-orbitagro}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-orbitagro}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-orbitagro123}
       SPRING_JPA_HIBERNATE_DDL_AUTO: ${SPRING_JPA_HIBERNATE_DDL_AUTO:-update}
