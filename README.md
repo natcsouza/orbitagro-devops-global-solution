@@ -363,7 +363,7 @@ Os dados devem permanecer após reconexão — volume nomeado `pgdata`.
 
 ## Vídeo demonstrativo
 
-Link: ![](https://youtu.be/fuKUpc1hQKw)
+Link: https://youtu.be/fuKUpc1hQKw
 
 ---
 
